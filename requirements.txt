@@ -1,0 +1,8 @@
+Flask
+pandas
+networkx
+pymongo
+dnspython
+python-dotenv
+numpy
+gunicorn
