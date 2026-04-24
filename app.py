@@ -18,9 +18,15 @@ from bson.objectid import ObjectId
 load_dotenv()
 
 mongo_uri = os.getenv("MONGO_URI")
-client = MongoClient(mongo_uri, serverSelectionTimeoutMS=2000) if mongo_uri else MongoClient(serverSelectionTimeoutMS=2000)
-db = client["Finforensics"]
-collection = db["analysis"]
+try:
+    client = MongoClient(mongo_uri, serverSelectionTimeoutMS=2000) if mongo_uri else MongoClient(serverSelectionTimeoutMS=2000)
+    db = client["Finforensics"]
+    collection = db["analysis"]
+except Exception as e:
+    print(f"CRITICAL WARNING: MongoDB failed to connect. App will run without database. Error: {e}")
+    client = None
+    db = None
+    collection = None
 
 app = Flask(__name__)
 analysis_result = None
@@ -208,7 +214,8 @@ def upload():
         }))
         
         try:
-            collection.insert_one(safe_record)
+            if collection is not None:
+                collection.insert_one(safe_record)
         except Exception as e:
             print(f"MongoDB Insert Skipped (Database not reachable): {e}")
         return jsonify({"analysis": analysis_result, "graph": graph_data})
@@ -222,6 +229,8 @@ def upload():
 
 @app.route('/history')
 def history():
+    if collection is None:
+        return jsonify({"error": "Database not configured properly"}), 500
     try:
         data = list(collection.find().sort("created_at", -1))
         parsed_data = json.loads(json_util.dumps(data))
@@ -234,6 +243,8 @@ def history():
 
 @app.route('/history/<id>')
 def get_history_item(id):
+    if collection is None:
+        return jsonify({"error": "Database not configured properly"}), 500
     try:
         item = collection.find_one({"_id": ObjectId(id)})
         if not item: return jsonify({"error": "Not found"}), 404
