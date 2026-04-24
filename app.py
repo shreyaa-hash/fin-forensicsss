@@ -17,7 +17,8 @@ from bson.objectid import ObjectId
 # =========================
 load_dotenv()
 
-client = MongoClient(os.getenv("MONGO_URI"))
+mongo_uri = os.getenv("MONGO_URI")
+client = MongoClient(mongo_uri, serverSelectionTimeoutMS=2000) if mongo_uri else MongoClient(serverSelectionTimeoutMS=2000)
 db = client["Finforensics"]
 collection = db["analysis"]
 
@@ -215,8 +216,11 @@ def upload():
             "graph": graph_data,
             "created_at": time.time()
         }))
-        collection.insert_one(safe_record)
-
+        
+        try:
+            collection.insert_one(safe_record)
+        except Exception as e:
+            print(f"MongoDB Insert Skipped (Database not reachable): {e}")
         return jsonify({"analysis": analysis_result, "graph": graph_data})
         
     except Exception as e:
