@@ -159,30 +159,25 @@ def upload():
         processing_time = float(round(time.time() - start_time, 2))
 
         # --- NEW MASTER FORENSIC CHARTS DATA ---
-        sender_volumes = df.groupby('sender_id')['amount'].sum().sort_values(ascending=False).head(5)
-        bar_chart = {
-            "labels": [str(x) for x in sender_volumes.index.tolist()],
-            "values": [float(x) for x in sender_volumes.values.tolist()]
-        }
+        score_buckets = {"0-10": 0, "10-20": 0, "20-30": 0, "30-40": 0, "40-50": 0, "50-60": 0, "60-70": 0, "70-80": 0, "80-90": 0, "90-100": 0}
+        for acc in final_accounts:
+            score = acc["suspicion_score"]
+            if score >= 100: bucket = "90-100"
+            else: bucket = f"{int(score // 10 * 10)}-{int((score // 10 + 1) * 10)}"
+            if bucket in score_buckets: score_buckets[bucket] += 1
+            
+        lifecycle_counts = {}
+        for acc in final_accounts:
+            stage = acc["lifecycle_stage"]
+            lifecycle_counts[stage] = lifecycle_counts.get(stage, 0) + 1
+            
+        pattern_counts = {}
+        for acc in final_accounts:
+            for p in acc["detected_patterns"]:
+                pattern_counts[p] = pattern_counts.get(p, 0) + 1
+        sorted_patterns = sorted(pattern_counts.items(), key=lambda x: x[1], reverse=False)
         
-        smurf_nodes = [str(n) for n in G.nodes() if G.in_degree(n) >= 10 and G.out_degree(n) == 0 and sum([d['amount'] for u, v, d in G.in_edges(n, data=True)])/G.in_degree(n) < 1500]
-        merchant_nodes = [str(n) for n in G.nodes() if G.in_degree(n) >= 10 and G.out_degree(n) == 0 and sum([d['amount'] for u, v, d in G.in_edges(n, data=True)])/G.in_degree(n) >= 1500]
-        
-        cycle_edges = set()
-        for cycle in cycles:
-            if 3 <= len(cycle) <= 6:
-                for i in range(len(cycle)):
-                    cycle_edges.add((str(cycle[i]), str(cycle[(i+1)%len(cycle)])))
-        layering_edges = len(cycle_edges)
-        
-        smurf_edges = sum(1 for u, v in G.edges() if str(v) in smurf_nodes)
-        merchant_edges = sum(1 for u, v in G.edges() if str(v) in merchant_nodes)
-        standard_edges = max(0, len(G.edges()) - layering_edges - smurf_edges - merchant_edges)
-        
-        pie_chart = {
-            "labels": ["Standard Wire", "Shell/Merchant", "Cash/Smurfing", "Layering"],
-            "values": [standard_edges, merchant_edges, smurf_edges, layering_edges]
-        }
+        scatter_data = [{"x": len(r["member_accounts"]), "y": r["risk_score"]} for r in fraud_rings]
 
         analysis_result = {
             "suspicious_accounts": final_accounts,
@@ -194,8 +189,10 @@ def upload():
                 "processing_time_seconds": processing_time
             },
             "charts": {
-                "bar": bar_chart,
-                "pie": pie_chart
+                "distribution": {"labels": list(score_buckets.keys()), "values": list(score_buckets.values())},
+                "lifecycle": {"labels": list(lifecycle_counts.keys()), "values": list(lifecycle_counts.values())},
+                "patterns": {"labels": [p[0] for p in sorted_patterns], "values": [p[1] for p in sorted_patterns]},
+                "rings": scatter_data
             }
         }
 

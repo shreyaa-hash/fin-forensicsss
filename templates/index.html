@@ -120,16 +120,28 @@
                 <p class="text-gray" style="margin-top: 0.5rem;">Deep dive into Outbound Volumes and Transaction Typologies.</p>
             </div>
             <div class="charts-grid mt-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem;">
-                <div class="upload-card">
-                    <h3 style="margin-bottom: 1rem; font-size: 1rem; color: var(--text-dark);">📊 Top 5 Distributors (Outbound Vol)</h3>
+                <div class="upload-card" style="background-color: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                    <h3 style="margin-bottom: 1rem; font-size: 1rem; color: #1e293b;">Suspicion Score Distribution</h3>
                     <div style="position: relative; height: 250px; width: 100%;">
-                        <canvas id="barChart"></canvas>
+                        <canvas id="chartDistribution"></canvas>
                     </div>
                 </div>
-                <div class="upload-card">
-                    <h3 style="margin-bottom: 1rem; font-size: 1rem; color: var(--text-dark);">🥧 Transaction Typology</h3>
+                <div class="upload-card" style="background-color: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                    <h3 style="margin-bottom: 1rem; font-size: 1rem; color: #1e293b;">Lifecycle Stages</h3>
                     <div style="position: relative; height: 250px; width: 100%;">
-                        <canvas id="pieChart"></canvas>
+                        <canvas id="chartLifecycle"></canvas>
+                    </div>
+                </div>
+                <div class="upload-card" style="background-color: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                    <h3 style="margin-bottom: 1rem; font-size: 1rem; color: #1e293b;">Top Detected Patterns</h3>
+                    <div style="position: relative; height: 250px; width: 100%;">
+                        <canvas id="chartPatterns"></canvas>
+                    </div>
+                </div>
+                <div class="upload-card" style="background-color: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                    <h3 style="margin-bottom: 1rem; font-size: 1rem; color: #1e293b;">Ring Size vs Risk Score</h3>
+                    <div style="position: relative; height: 250px; width: 100%;">
+                        <canvas id="chartRings"></canvas>
                     </div>
                 </div>
             </div>
@@ -251,45 +263,52 @@
             }
         }
 
-        let barChartInst = null;
-        let pieChartInst = null;
+        let chartDist = null;
+        let chartLife = null;
+        let chartPatt = null;
+        let chartRing = null;
 
         function renderCharts(chartsData) {
             if(!chartsData) return;
+            Chart.defaults.color = '#64748b';
             
-            // Bar Chart
-            const barCtx = document.getElementById('barChart');
-            if(barCtx) {
-                if(barChartInst) barChartInst.destroy();
-                barChartInst = new Chart(barCtx, {
+            const distCtx = document.getElementById('chartDistribution');
+            if(distCtx) {
+                if(chartDist) chartDist.destroy();
+                chartDist = new Chart(distCtx, {
                     type: 'bar',
-                    data: {
-                        labels: chartsData.bar.labels,
-                        datasets: [{
-                            label: 'Total Outbound Volume ($)',
-                            data: chartsData.bar.values,
-                            backgroundColor: '#ef4444',
-                            borderRadius: 4
-                        }]
-                    },
-                    options: { responsive: true, maintainAspectRatio: false }
+                    data: { labels: chartsData.distribution.labels, datasets: [{ label: 'Count', data: chartsData.distribution.values, backgroundColor: '#ef4444', borderRadius: 4 }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
                 });
             }
 
-            // Pie Chart
-            const pieCtx = document.getElementById('pieChart');
-            if(pieCtx) {
-                if(pieChartInst) pieChartInst.destroy();
-                pieChartInst = new Chart(pieCtx, {
-                    type: 'pie',
-                    data: {
-                        labels: chartsData.pie.labels,
-                        datasets: [{
-                            data: chartsData.pie.values,
-                            backgroundColor: ['#3b82f6', '#f59e0b', '#10b981', '#ef4444']
-                        }]
-                    },
-                    options: { responsive: true, maintainAspectRatio: false }
+            const lifeCtx = document.getElementById('chartLifecycle');
+            if(lifeCtx) {
+                if(chartLife) chartLife.destroy();
+                chartLife = new Chart(lifeCtx, {
+                    type: 'doughnut',
+                    data: { labels: chartsData.lifecycle.labels, datasets: [{ data: chartsData.lifecycle.values, backgroundColor: ['#ef4444', '#3b82f6', '#10b981', '#f59e0b'] }] },
+                    options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'right', labels: { color: '#64748b' } } } }
+                });
+            }
+
+            const pattCtx = document.getElementById('chartPatterns');
+            if(pattCtx) {
+                if(chartPatt) chartPatt.destroy();
+                chartPatt = new Chart(pattCtx, {
+                    type: 'bar',
+                    data: { labels: chartsData.patterns.labels, datasets: [{ label: 'Occurrences', data: chartsData.patterns.values, backgroundColor: '#3b82f6', borderRadius: 4 }] },
+                    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
+                });
+            }
+
+            const ringCtx = document.getElementById('chartRings');
+            if(ringCtx) {
+                if(chartRing) chartRing.destroy();
+                chartRing = new Chart(ringCtx, {
+                    type: 'scatter',
+                    data: { datasets: [{ label: 'Risk Score', data: chartsData.rings, backgroundColor: '#f59e0b', pointRadius: 5 }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { title: { display: true, text: 'Ring Size' }, beginAtZero: true }, y: { title: { display: true, text: 'Risk Score' }, min: 0, max: 100 } } }
                 });
             }
         }
